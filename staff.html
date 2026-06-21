@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Staff — DDJ CA Colombia</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════════════ -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <img src="logo.png" alt="Sello DDJ" class="login-logo" />
+    <h2 class="login-title">Panel de Staff</h2>
+    <p class="login-sub">Departamento de Justicia — CA Colombia</p>
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="loginNombre">Nombre de funcionario</label>
+        <input type="text" id="loginNombre" placeholder="Tu nombre completo" required />
+      </div>
+      <div class="form-group">
+        <label for="loginPass">Contraseña</label>
+        <input type="password" id="loginPass" placeholder="••••••••" required />
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <button type="submit" class="btn-primary" style="width:100%;margin-top:.5rem">Ingresar</button>
+    </form>
+    <a href="index.html" class="login-back">← Volver al portal ciudadano</a>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     STAFF APP
+══════════════════════════════════════════ -->
+<div class="staff-app" id="staffApp" style="display:none">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <img src="logo.png" alt="DDJ" class="sidebar-logo" />
+      <div>
+        <div class="sidebar-title">DDJ Staff</div>
+        <div class="sidebar-sub">CA Colombia</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="snav-item active" onclick="showPanel('dashboard')" href="#">
+        <span class="snav-icon">📊</span> Dashboard
+      </a>
+      <a class="snav-item" onclick="showPanel('expedientes')" href="#">
+        <span class="snav-icon">📁</span> Expedientes
+      </a>
+      <a class="snav-item" onclick="showPanel('documentos')" href="#">
+        <span class="snav-icon">📜</span> Marco Legal
+      </a>
+      <a class="snav-item" onclick="showPanel('personal')" href="#">
+        <span class="snav-icon">👥</span> Personal
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user" id="sidebarUser"></div>
+      <button class="snav-logout" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="staff-main">
+    <div class="topbar">
+      <h1 class="topbar-title" id="topbarTitle">Dashboard</h1>
+      <div class="topbar-actions" id="topbarActions"></div>
+    </div>
+
+    <!-- ── Dashboard ── -->
+    <div class="dash-panel" id="panel-dashboard">
+      <div class="stat-cards" id="dashStats"></div>
+      <div class="dash-two-col">
+        <div class="dash-card">
+          <h3 class="dash-card-title">Expedientes Recientes</h3>
+          <div id="dashRecientes"></div>
+        </div>
+        <div class="dash-card">
+          <h3 class="dash-card-title">Distribución por Tribunal</h3>
+          <div id="dashTribunales"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Expedientes ── -->
+    <div class="dash-panel" id="panel-expedientes" style="display:none">
+      <div class="panel-toolbar">
+        <input type="text" class="search-input" id="expSearch" placeholder="Buscar por ID o título..." oninput="renderExpedientes()" />
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="expTable">
+          <thead>
+            <tr>
+              <th>ID</th><th>Tipo</th><th>Título</th><th>Estado</th><th>Tribunal</th><th>Apertura</th><th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="expTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Documentos ── -->
+    <div class="dash-panel" id="panel-documentos" style="display:none">
+      <div class="panel-toolbar">
+        <input type="text" class="search-input" id="docSearch" placeholder="Buscar documentos..." oninput="renderDocumentos()" />
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="docTable">
+          <thead>
+            <tr>
+              <th>Código</th><th>Título</th><th>Categoría</th><th>Actualizado</th><th>Por</th><th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="docTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Personal ── -->
+    <div class="dash-panel" id="panel-personal" style="display:none">
+      <div class="panel-toolbar">
+        <input type="text" class="search-input" id="persSearch" placeholder="Buscar personal..." oninput="renderPersonal()" />
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="persTable">
+          <thead>
+            <tr>
+              <th>ID</th><th>Nombre</th><th>Cargo</th><th>Tribunal</th><th>Ingreso</th><th>Estado</th><th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="persTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════ -->
+
+<!-- Modal Expediente -->
+<div class="modal-overlay" id="modalExp" onclick="closeModal('modalExp',event)">
+  <div class="modal-box modal-lg">
+    <button class="modal-close" onclick="closeModalById('modalExp')">✕</button>
+    <h3 class="modal-title" id="modalExpTitle">Nuevo Expediente</h3>
+    <form id="formExp" onsubmit="saveExpediente(event)">
+      <input type="hidden" id="expId" />
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Tipo</label>
+          <select id="expTipo" required>
+            <option value="">Seleccionar...</option>
+            <option>Penal</option><option>Civil</option><option>Familia</option><option>Administrativo</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Estado</label>
+          <select id="expEstado" required>
+            <option>Abierto</option><option>En proceso</option><option>En apelación</option><option>Cerrado</option><option>Archivado</option>
+          </select>
+        </div>
+        <div class="form-group form-full">
+          <label>Título del proceso</label>
+          <input type="text" id="expTitulo" required placeholder="Ej: Caso homicidio agravado..." />
+        </div>
+        <div class="form-group">
+          <label>Tribunal</label>
+          <select id="expTribunal" required>
+            <option value="">Seleccionar...</option>
+            <option>Corte Suprema de Justicia</option>
+            <option>Tribunal Superior de Justicia</option>
+            <option>Juzgado de Circuito</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fecha de Apertura</label>
+          <input type="date" id="expFecha" required />
+        </div>
+        <div class="form-group">
+          <label>Parte 1 (nombre)</label>
+          <input type="text" id="expParte1" required placeholder="Nombre de la parte" />
+        </div>
+        <div class="form-group">
+          <label>Rol Parte 1</label>
+          <input type="text" id="expRol1" required placeholder="Ej: Acusador, Demandante..." />
+        </div>
+        <div class="form-group">
+          <label>Parte 2 (nombre)</label>
+          <input type="text" id="expParte2" required placeholder="Nombre de la parte" />
+        </div>
+        <div class="form-group">
+          <label>Rol Parte 2</label>
+          <input type="text" id="expRol2" required placeholder="Ej: Acusado, Demandado..." />
+        </div>
+        <div class="form-group form-full">
+          <label>Descripción del proceso</label>
+          <textarea id="expDesc" rows="3" required placeholder="Describe el proceso judicial..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeModalById('modalExp')">Cancelar</button>
+        <button type="submit" class="btn-primary">Guardar Expediente</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Ver Expediente / Actuaciones -->
+<div class="modal-overlay" id="modalExpView" onclick="closeModal('modalExpView',event)">
+  <div class="modal-box modal-lg">
+    <button class="modal-close" onclick="closeModalById('modalExpView')">✕</button>
+    <div class="modal-tag" id="viewExpTipo"></div>
+    <h3 class="modal-title" id="viewExpTitulo"></h3>
+    <div id="viewExpBody"></div>
+    <hr class="modal-divider" />
+    <h4 class="modal-subtitle">Actuaciones del Proceso</h4>
+    <div id="viewActuaciones"></div>
+    <form id="formActuacion" onsubmit="addActuacion(event)" style="margin-top:1rem">
+      <input type="hidden" id="actExpId" />
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" id="actFecha" required />
+        </div>
+        <div class="form-group">
+          <label>Funcionario responsable</label>
+          <input type="text" id="actFuncionario" required placeholder="Nombre del funcionario" />
+        </div>
+        <div class="form-group form-full">
+          <label>Descripción de la actuación</label>
+          <textarea id="actDesc" rows="2" required placeholder="Describe la actuación..."></textarea>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" style="margin-top:.5rem">+ Agregar Actuación</button>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Documento -->
+<div class="modal-overlay" id="modalDoc" onclick="closeModal('modalDoc',event)">
+  <div class="modal-box modal-lg">
+    <button class="modal-close" onclick="closeModalById('modalDoc')">✕</button>
+    <h3 class="modal-title" id="modalDocTitle">Nuevo Documento</h3>
+    <form id="formDoc" onsubmit="saveDocumento(event)">
+      <input type="hidden" id="docEditId" />
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Código</label>
+          <input type="text" id="docCodigo" required placeholder="COD-007" />
+        </div>
+        <div class="form-group">
+          <label>Categoría</label>
+          <select id="docCat" required>
+            <option value="">Seleccionar...</option>
+            <option>Penal</option><option>Procesal</option><option>Constitucional</option><option>Administrativo</option><option>Civil</option>
+          </select>
+        </div>
+        <div class="form-group form-full">
+          <label>Título</label>
+          <input type="text" id="docTitulo" required placeholder="Nombre del documento legal" />
+        </div>
+        <div class="form-group form-full">
+          <label>Contenido del documento</label>
+          <textarea id="docContenido" rows="10" required placeholder="Ingresa el texto completo del documento legal..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeModalById('modalDoc')">Cancelar</button>
+        <button type="submit" class="btn-primary">Guardar Documento</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Personal -->
+<div class="modal-overlay" id="modalPers" onclick="closeModal('modalPers',event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModalById('modalPers')">✕</button>
+    <h3 class="modal-title" id="modalPersTitle">Nuevo Funcionario</h3>
+    <form id="formPers" onsubmit="savePersonal(event)">
+      <input type="hidden" id="persId" />
+      <div class="form-group">
+        <label>Nombre completo</label>
+        <input type="text" id="persNombre" required placeholder="Nombre del funcionario" />
+      </div>
+      <div class="form-group">
+        <label>Cargo</label>
+        <input type="text" id="persCargo" required placeholder="Ej: Magistrado, Juez de Circuito..." />
+      </div>
+      <div class="form-group">
+        <label>Tribunal / Institución</label>
+        <select id="persTribunal" required>
+          <option value="">Seleccionar...</option>
+          <option>Corte Suprema de Justicia</option>
+          <option>Tribunal Superior de Justicia</option>
+          <option>Juzgado de Circuito</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Fecha de Ingreso</label>
+        <input type="date" id="persIngreso" required />
+      </div>
+      <div class="form-group">
+        <label>Estado</label>
+        <select id="persActivo">
+          <option value="true">Activo</option>
+          <option value="false">Inactivo</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeModalById('modalPers')">Cancelar</button>
+        <button type="submit" class="btn-primary">Guardar Funcionario</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Confirmar Eliminar -->
+<div class="modal-overlay" id="modalConfirm" onclick="closeModal('modalConfirm',event)">
+  <div class="modal-box modal-sm">
+    <button class="modal-close" onclick="closeModalById('modalConfirm')">✕</button>
+    <div class="confirm-icon">⚠️</div>
+    <h3 class="modal-title">Confirmar eliminación</h3>
+    <p class="confirm-msg" id="confirmMsg">¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer.</p>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModalById('modalConfirm')">Cancelar</button>
+      <button class="btn-danger" id="confirmBtn">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+let currentUser = null;
+
+// ── Auth ──
+document.getElementById('loginForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const nombre = document.getElementById('loginNombre').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginError');
+  if (pass !== STAFF_PASS) {
+    err.textContent = 'Contraseña incorrecta. Intenta de nuevo.';
+    return;
+  }
+  err.textContent = '';
+  currentUser = nombre;
+  const db = getDB();
+  db.currentUser = nombre;
+  saveDB(db);
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('staffApp').style.display = 'flex';
+  document.getElementById('sidebarUser').textContent = nombre;
+  showPanel('dashboard');
+});
+
+function logout() {
+  currentUser = null;
+  const db = getDB();
+  db.currentUser = null;
+  saveDB(db);
+  document.getElementById('staffApp').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginForm').reset();
+}
+
+// Check session
+(function() {
+  const db = getDB();
+  if (db.currentUser) {
+    currentUser = db.currentUser;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('staffApp').style.display = 'flex';
+    document.getElementById('sidebarUser').textContent = currentUser;
+    showPanel('dashboard');
+  }
+})();
+
+// ── Panel nav ──
+function showPanel(name) {
+  document.querySelectorAll('.dash-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.snav-item').forEach(a => a.classList.remove('active'));
+  document.getElementById('panel-' + name).style.display = 'block';
+  document.querySelector('.snav-item[onclick*="' + name + '"]').classList.add('active');
+
+  const titles = { dashboard: 'Dashboard', expedientes: 'Expedientes', documentos: 'Marco Legal', personal: 'Personal' };
+  document.getElementById('topbarTitle').textContent = titles[name];
+
+  const actions = document.getElementById('topbarActions');
+  actions.innerHTML = '';
+  if (name === 'expedientes') {
+    actions.innerHTML = '<button class="btn-primary" onclick="openNewExp()">+ Nuevo Expediente</button>';
+    renderExpedientes();
+  } else if (name === 'documentos') {
+    actions.innerHTML = '<button class="btn-primary" onclick="openNewDoc()">+ Nuevo Documento</button>';
+    renderDocumentos();
+  } else if (name === 'personal') {
+    actions.innerHTML = '<button class="btn-primary" onclick="openNewPers()">+ Nuevo Funcionario</button>';
+    renderPersonal();
+  } else if (name === 'dashboard') {
+    renderDashboard();
+  }
+}
+
+// ── Dashboard ──
+function renderDashboard() {
+  const db = getDB();
+  const exps = db.expedientes;
+
+  const abiertos = exps.filter(e => e.estado === 'Abierto').length;
+  const enProceso = exps.filter(e => e.estado === 'En proceso').length;
+  const apelacion = exps.filter(e => e.estado === 'En apelación').length;
+  const cerrados = exps.filter(e => e.estado === 'Cerrado' || e.estado === 'Archivado').length;
+
+  document.getElementById('dashStats').innerHTML =
+    statCard('📁', 'Total Expedientes', exps.length, '') +
+    statCard('🟡', 'En Proceso', enProceso, '') +
+    statCard('🔵', 'Abiertos', abiertos, '') +
+    statCard('✅', 'Cerrados/Archivados', cerrados, '') +
+    statCard('📜', 'Documentos Legales', db.documentos.length, '') +
+    statCard('👥', 'Funcionarios Activos', db.personal.filter(p => p.activo).length, '');
+
+  const recientes = [...exps].reverse().slice(0, 5);
+  document.getElementById('dashRecientes').innerHTML = recientes.length
+    ? recientes.map(e => '<div class="act-row"><span class="badge ' + badgeClass(e.estado) + '">' + e.estado + '</span><div><strong>' + e.id + '</strong><br><small>' + e.titulo + '</small></div></div>').join('')
+    : '<p style="color:var(--text-muted)">Sin expedientes.</p>';
+
+  const tribMap = {};
+  exps.forEach(e => { tribMap[e.tribunal] = (tribMap[e.tribunal] || 0) + 1; });
+  document.getElementById('dashTribunales').innerHTML = Object.entries(tribMap).length
+    ? Object.entries(tribMap).map(([t, n]) => '<div class="trib-row"><span class="trib-name">' + t + '</span><span class="trib-count badge badge-blue">' + n + '</span></div>').join('')
+    : '<p style="color:var(--text-muted)">Sin datos.</p>';
+}
+
+function statCard(icon, label, value, extra) {
+  return '<div class="stat-card"><div class="stat-card-icon">' + icon + '</div><div class="stat-card-info"><div class="stat-card-val">' + value + '</div><div class="stat-card-label">' + label + '</div></div></div>';
+}
+
+// ── Expedientes CRUD ──
+function renderExpedientes() {
+  const db = getDB();
+  const q = (document.getElementById('expSearch').value || '').toLowerCase();
+  const rows = db.expedientes.filter(e =>
+    e.id.toLowerCase().includes(q) || e.titulo.toLowerCase().includes(q)
+  );
+  document.getElementById('expTbody').innerHTML = rows.map(e =>
+    '<tr>' +
+      '<td><code>' + e.id + '</code></td>' +
+      '<td>' + e.tipo + '</td>' +
+      '<td>' + e.titulo + '</td>' +
+      '<td><span class="badge ' + badgeClass(e.estado) + '">' + e.estado + '</span></td>' +
+      '<td>' + e.tribunal + '</td>' +
+      '<td>' + e.fechaApertura + '</td>' +
+      '<td class="td-actions">' +
+        '<button class="btn-sm btn-view" onclick="viewExpediente(\'' + e.id + '\')">Ver</button>' +
+        '<button class="btn-sm btn-edit" onclick="editExpediente(\'' + e.id + '\')">Editar</button>' +
+        '<button class="btn-sm btn-del" onclick="confirmDelete(\'exp\',\'' + e.id + '\')">Eliminar</button>' +
+      '</td>' +
+    '</tr>'
+  ).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem">Sin expedientes.</td></tr>';
+}
+
+function openNewExp() {
+  document.getElementById('modalExpTitle').textContent = 'Nuevo Expediente';
+  document.getElementById('formExp').reset();
+  document.getElementById('expId').value = '';
+  document.getElementById('expFecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('modalExp').classList.add('open');
+}
+
+function editExpediente(id) {
+  const db = getDB();
+  const e = db.expedientes.find(x => x.id === id);
+  if (!e) return;
+  document.getElementById('modalExpTitle').textContent = 'Editar Expediente — ' + e.id;
+  document.getElementById('expId').value = e.id;
+  document.getElementById('expTipo').value = e.tipo;
+  document.getElementById('expEstado').value = e.estado;
+  document.getElementById('expTitulo').value = e.titulo;
+  document.getElementById('expTribunal').value = e.tribunal;
+  document.getElementById('expFecha').value = e.fechaApertura;
+  document.getElementById('expParte1').value = e.partes.parte1;
+  document.getElementById('expRol1').value = e.rol1;
+  document.getElementById('expParte2').value = e.partes.parte2;
+  document.getElementById('expRol2').value = e.rol2;
+  document.getElementById('expDesc').value = e.descripcion;
+  document.getElementById('modalExp').classList.add('open');
+}
+
+function saveExpediente(ev) {
+  ev.preventDefault();
+  const db = getDB();
+  const id = document.getElementById('expId').value;
+  const data = {
+    tipo: document.getElementById('expTipo').value,
+    estado: document.getElementById('expEstado').value,
+    titulo: document.getElementById('expTitulo').value,
+    tribunal: document.getElementById('expTribunal').value,
+    fechaApertura: document.getElementById('expFecha').value,
+    partes: { parte1: document.getElementById('expParte1').value, parte2: document.getElementById('expParte2').value },
+    rol1: document.getElementById('expRol1').value,
+    rol2: document.getElementById('expRol2').value,
+    descripcion: document.getElementById('expDesc').value,
+  };
+  if (id) {
+    const idx = db.expedientes.findIndex(e => e.id === id);
+    db.expedientes[idx] = Object.assign(db.expedientes[idx], data);
+  } else {
+    data.id = generateExpId(db);
+    data.actuaciones = [];
+    db.expedientes.push(data);
+  }
+  saveDB(db);
+  closeModalById('modalExp');
+  renderExpedientes();
+}
+
+function viewExpediente(id) {
+  const db = getDB();
+  const e = db.expedientes.find(x => x.id === id);
+  if (!e) return;
+  document.getElementById('viewExpTipo').textContent = e.tipo;
+  document.getElementById('viewExpTitulo').textContent = e.id + ' — ' + e.titulo;
+  document.getElementById('viewExpBody').innerHTML =
+    '<div class="result-meta-grid" style="margin:.5rem 0 1rem">' +
+      '<div class="result-meta-item"><span class="rmi-label">Estado</span><span class="rmi-val"><span class="badge ' + badgeClass(e.estado) + '">' + e.estado + '</span></span></div>' +
+      '<div class="result-meta-item"><span class="rmi-label">Tribunal</span><span class="rmi-val">' + e.tribunal + '</span></div>' +
+      '<div class="result-meta-item"><span class="rmi-label">Apertura</span><span class="rmi-val">' + e.fechaApertura + '</span></div>' +
+      '<div class="result-meta-item"><span class="rmi-label">' + e.rol1 + '</span><span class="rmi-val">' + e.partes.parte1 + '</span></div>' +
+      '<div class="result-meta-item"><span class="rmi-label">' + e.rol2 + '</span><span class="rmi-val">' + e.partes.parte2 + '</span></div>' +
+    '</div>' +
+    '<p style="color:var(--text-muted);margin-bottom:.5rem">' + e.descripcion + '</p>';
+
+  document.getElementById('actExpId').value = e.id;
+  document.getElementById('actFecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('actFuncionario').value = currentUser || '';
+  renderActuaciones(e);
+  document.getElementById('modalExpView').classList.add('open');
+}
+
+function renderActuaciones(exp) {
+  const acts = exp.actuaciones || [];
+  document.getElementById('viewActuaciones').innerHTML = acts.length
+    ? acts.map(a => '<div class="act-row"><div class="timeline-dot" style="flex-shrink:0"></div><div><div class="timeline-date">' + a.fecha + ' — <em>' + a.funcionario + '</em></div><div class="timeline-desc">' + a.descripcion + '</div></div></div>').join('')
+    : '<p style="color:var(--text-muted)">Sin actuaciones registradas.</p>';
+}
+
+function addActuacion(ev) {
+  ev.preventDefault();
+  const id = document.getElementById('actExpId').value;
+  const db = getDB();
+  const exp = db.expedientes.find(e => e.id === id);
+  if (!exp) return;
+  exp.actuaciones = exp.actuaciones || [];
+  exp.actuaciones.push({
+    fecha: document.getElementById('actFecha').value,
+    descripcion: document.getElementById('actDesc').value,
+    funcionario: document.getElementById('actFuncionario').value,
+  });
+  saveDB(db);
+  document.getElementById('actDesc').value = '';
+  renderActuaciones(exp);
+}
+
+// ── Documentos CRUD ──
+function renderDocumentos() {
+  const db = getDB();
+  const q = (document.getElementById('docSearch').value || '').toLowerCase();
+  const rows = db.documentos.filter(d =>
+    d.titulo.toLowerCase().includes(q) || d.codigo.toLowerCase().includes(q)
+  );
+  document.getElementById('docTbody').innerHTML = rows.map(d =>
+    '<tr>' +
+      '<td><code>' + d.codigo + '</code></td>' +
+      '<td>' + d.titulo + '</td>' +
+      '<td>' + d.categoria + '</td>' +
+      '<td>' + d.fechaActualizacion + '</td>' +
+      '<td>' + d.actualizadoPor + '</td>' +
+      '<td class="td-actions">' +
+        '<button class="btn-sm btn-edit" onclick="editDocumento(\'' + d.id + '\')">Editar</button>' +
+        '<button class="btn-sm btn-del" onclick="confirmDelete(\'doc\',\'' + d.id + '\')">Eliminar</button>' +
+      '</td>' +
+    '</tr>'
+  ).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem">Sin documentos.</td></tr>';
+}
+
+function openNewDoc() {
+  document.getElementById('modalDocTitle').textContent = 'Nuevo Documento Legal';
+  document.getElementById('formDoc').reset();
+  document.getElementById('docEditId').value = '';
+  document.getElementById('modalDoc').classList.add('open');
+}
+
+function editDocumento(id) {
+  const db = getDB();
+  const d = db.documentos.find(x => x.id === id);
+  if (!d) return;
+  document.getElementById('modalDocTitle').textContent = 'Editar: ' + d.titulo;
+  document.getElementById('docEditId').value = d.id;
+  document.getElementById('docCodigo').value = d.codigo;
+  document.getElementById('docCat').value = d.categoria;
+  document.getElementById('docTitulo').value = d.titulo;
+  document.getElementById('docContenido').value = d.contenido;
+  document.getElementById('modalDoc').classList.add('open');
+}
+
+function saveDocumento(ev) {
+  ev.preventDefault();
+  const db = getDB();
+  const id = document.getElementById('docEditId').value;
+  const today = new Date().toISOString().split('T')[0];
+  const data = {
+    codigo: document.getElementById('docCodigo').value,
+    categoria: document.getElementById('docCat').value,
+    titulo: document.getElementById('docTitulo').value,
+    contenido: document.getElementById('docContenido').value,
+    fechaActualizacion: today,
+    actualizadoPor: currentUser || 'Staff',
+  };
+  if (id) {
+    const idx = db.documentos.findIndex(d => d.id === id);
+    db.documentos[idx] = Object.assign(db.documentos[idx], data);
+  } else {
+    data.id = generateDocId(db);
+    db.documentos.push(data);
+  }
+  saveDB(db);
+  closeModalById('modalDoc');
+  renderDocumentos();
+}
+
+// ── Personal CRUD ──
+function renderPersonal() {
+  const db = getDB();
+  const q = (document.getElementById('persSearch').value || '').toLowerCase();
+  const rows = db.personal.filter(p =>
+    p.nombre.toLowerCase().includes(q) || p.cargo.toLowerCase().includes(q)
+  );
+  document.getElementById('persTbody').innerHTML = rows.map(p =>
+    '<tr>' +
+      '<td><code>' + p.id + '</code></td>' +
+      '<td>' + p.nombre + '</td>' +
+      '<td>' + p.cargo + '</td>' +
+      '<td>' + p.tribunal + '</td>' +
+      '<td>' + p.fechaIngreso + '</td>' +
+      '<td><span class="badge ' + (p.activo ? 'badge-green' : 'badge-gray') + '">' + (p.activo ? 'Activo' : 'Inactivo') + '</span></td>' +
+      '<td class="td-actions">' +
+        '<button class="btn-sm btn-edit" onclick="editPersonal(\'' + p.id + '\')">Editar</button>' +
+        '<button class="btn-sm btn-del" onclick="confirmDelete(\'pers\',\'' + p.id + '\')">Eliminar</button>' +
+      '</td>' +
+    '</tr>'
+  ).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem">Sin personal registrado.</td></tr>';
+}
+
+function openNewPers() {
+  document.getElementById('modalPersTitle').textContent = 'Nuevo Funcionario';
+  document.getElementById('formPers').reset();
+  document.getElementById('persId').value = '';
+  document.getElementById('persIngreso').value = new Date().toISOString().split('T')[0];
+  document.getElementById('modalPers').classList.add('open');
+}
+
+function editPersonal(id) {
+  const db = getDB();
+  const p = db.personal.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('modalPersTitle').textContent = 'Editar: ' + p.nombre;
+  document.getElementById('persId').value = p.id;
+  document.getElementById('persNombre').value = p.nombre;
+  document.getElementById('persCargo').value = p.cargo;
+  document.getElementById('persTribunal').value = p.tribunal;
+  document.getElementById('persIngreso').value = p.fechaIngreso;
+  document.getElementById('persActivo').value = String(p.activo);
+  document.getElementById('modalPers').classList.add('open');
+}
+
+function savePersonal(ev) {
+  ev.preventDefault();
+  const db = getDB();
+  const id = document.getElementById('persId').value;
+  const data = {
+    nombre: document.getElementById('persNombre').value,
+    cargo: document.getElementById('persCargo').value,
+    tribunal: document.getElementById('persTribunal').value,
+    fechaIngreso: document.getElementById('persIngreso').value,
+    activo: document.getElementById('persActivo').value === 'true',
+  };
+  if (id) {
+    const idx = db.personal.findIndex(p => p.id === id);
+    db.personal[idx] = Object.assign(db.personal[idx], data);
+  } else {
+    data.id = generateUsrId(db);
+    db.personal.push(data);
+  }
+  saveDB(db);
+  closeModalById('modalPers');
+  renderPersonal();
+}
+
+// ── Delete ──
+function confirmDelete(type, id) {
+  const msgs = { exp: 'Eliminar este expediente y todas sus actuaciones.', doc: 'Eliminar este documento legal del marco normativo.', pers: 'Eliminar este funcionario del registro de personal.' };
+  document.getElementById('confirmMsg').textContent = msgs[type] || '¿Confirmar eliminación?';
+  document.getElementById('confirmBtn').onclick = () => doDelete(type, id);
+  document.getElementById('modalConfirm').classList.add('open');
+}
+
+function doDelete(type, id) {
+  const db = getDB();
+  if (type === 'exp') db.expedientes = db.expedientes.filter(e => e.id !== id);
+  if (type === 'doc') db.documentos = db.documentos.filter(d => d.id !== id);
+  if (type === 'pers') db.personal = db.personal.filter(p => p.id !== id);
+  saveDB(db);
+  closeModalById('modalConfirm');
+  if (type === 'exp') renderExpedientes();
+  if (type === 'doc') renderDocumentos();
+  if (type === 'pers') renderPersonal();
+}
+
+// ── Modal helpers ──
+function closeModal(id, e) {
+  if (e.target.id === id) document.getElementById(id).classList.remove('open');
+}
+function closeModalById(id) {
+  document.getElementById(id).classList.remove('open');
+}
+</script>
+</body>
+</html>
